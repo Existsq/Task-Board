@@ -1,0 +1,36 @@
+server:
+  port: 8080
+
+spring:
+  liquibase:
+    enabled: true
+    drop-first: false
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+  datasource:
+    url: ${DATASOURCE_URL}
+    username: ${DATASOURCE_USERNAME}
+    password: ${DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  application:
+    name: task-service
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    show-sql: off
+
+logging:
+  level:
+    root: WARN
+    org.springframework: WARN
+    com.netflix.discovery: ERROR
+    org.springframework.cloud.netflix.eureka: ERROR
+    org.apache.catalina: WARN
+    com.work.auth: INFO
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULT_ZONE}
+    register-with-eureka: true
+    fetch-registry: true

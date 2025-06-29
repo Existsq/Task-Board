@@ -1,0 +1,100 @@
+services:
+  eureka-server:
+    build:
+      context: ./eureka-server
+    ports:
+      - "8761:8761"
+    networks:
+      - backend-net
+
+  postgres-auth:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: authdb
+      POSTGRES_USER: auth
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5432:5432"
+    networks:
+      - backend-net
+    restart: unless-stopped
+
+  postgres-task:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: taskdb
+      POSTGRES_USER: task
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5433:5432"
+    networks:
+      - backend-net
+    restart: unless-stopped
+
+  auth-service:
+    build:
+      context: ./auth
+    ports:
+      - "9000:9000"
+    depends_on:
+      - eureka-server
+      - postgres-auth
+    environment:
+      DATASOURCE_URL: jdbc:postgresql://postgres-auth:5432/authdb
+      DATASOURCE_USERNAME: auth
+      DATASOURCE_PASSWORD: admin
+      EUREKA_CLIENT_SERVICE_URL_DEFAULT_ZONE: http://eureka-server:8761/eureka/
+      APPLICATION_NAME: auth-service
+      JWT_SECRET: 838d53ccf0f0854a74f2a03e2dcb2e83281e2bbedb38748196ad5e90fbda795a
+    networks:
+      - backend-net
+    restart: unless-stopped
+
+  task-service:
+    build:
+      context: ./task
+    ports:
+      - "8080:8080"
+    depends_on:
+      - eureka-server
+      - postgres-task
+    environment:
+      DATASOURCE_URL: jdbc:postgresql://postgres-task:5432/taskdb
+      DATASOURCE_USERNAME: task
+      DATASOURCE_PASSWORD: admin
+      EUREKA_CLIENT_SERVICE_URL_DEFAULT_ZONE: http://eureka-server:8761/eureka/
+      APPLICATION_NAME: task-service
+    networks:
+      - backend-net
+    restart: unless-stopped
+
+  api-gateway:
+    build:
+      context: ./gateway
+    ports:
+      - "9090:9090"
+    depends_on:
+      - eureka-server
+      - auth-service
+      - task-service
+    environment:
+      EUREKA_CLIENT_SERVICE_URL_DEFAULT_ZONE: http://eureka-server:8761/eureka/
+      APPLICATION_NAME: api-gateway
+      JWT_SECRET: 838d53ccf0f0854a74f2a03e2dcb2e83281e2bbedb38748196ad5e90fbda795a
+    networks:
+      - backend-net
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./taskboard-frontend
+    ports:
+      - "3000:80"           # внешний порт -> nginx внутри контейнера
+    depends_on:
+      - api-gateway
+    networks:
+      - backend-net
+
+networks:
+  backend-net:
+    driver: bridge
